@@ -81,6 +81,35 @@ async def discover_local_models() -> list[dict[str, Any]]:
     ]
 
 
+async def discover_local_fast_models() -> list[dict[str, Any]]:
+    """Same as discover_local_models() but queries the fast endpoint (port 8091
+    by default). Used by columns that route via mode='local_fast'."""
+    fast_url = getattr(settings, "local_vllm_url_fast", None)
+    if not fast_url:
+        return []
+    url = fast_url.rstrip("/") + "/models"
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                url, headers={"Authorization": f"Bearer {settings.local_vllm_api_key}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        log.warning("local-fast model discovery failed", extra={"url": url, "error": str(e)})
+        return []
+    return [
+        {
+            "id": m["id"],
+            "label": m["id"].split("/")[-1],
+            "mode": "local_fast",
+            "tags": ["local", "on-prem", "fast"],
+            "notes": "Served by the secondary vLLM. Data does not leave the device.",
+        }
+        for m in data.get("data", []) if m.get("id")
+    ]
+
+
 async def check_hosted_health() -> dict[str, Any]:
     if not settings.nvidia_api_key:
         return {"status": "unconfigured", "reason": "NVIDIA_API_KEY not set in .env"}
