@@ -25,7 +25,7 @@ from .logging_config import log, request_id_var, setup_logging
 from .presets import list_presets, load_preset
 from .providers import (
     check_hosted_health, check_local_health,
-    discover_local_models, hosted_models,
+    discover_local_fast_models, discover_local_models, hosted_models,
 )
 from .schema_spec import SchemaSpec
 from .settings import settings
@@ -145,6 +145,7 @@ async def list_models() -> dict[str, Any]:
     return {
         "hosted": hosted_models(),
         "local": await discover_local_models(),
+        "local_fast": await discover_local_fast_models(),
     }
 
 
