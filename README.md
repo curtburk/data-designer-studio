@@ -2,7 +2,7 @@
 
 An LLM powered tool for generating vertical-specific synthetic datasets on-premises. Wraps NVIDIA's `data-designer` library with a web UI, dual-mode execution (NVIDIA hosted API vs. local vLLM on ZGX Nano), and a six-preset starter library covering healthcare, federal/defense, SLED, manufacturing, maritime, and financial services.
 
-The product story is **Compliance by Architecture**: the same schema runs on either backend. Switch a single toggle, the only difference is where the LLM calls go. That's the demo for buyers who can't put PHI, ITAR data, or proprietary IP into a hosted cloud.
+Switch a single toggle, the only difference is where the LLM calls go.
 
 ---
 
