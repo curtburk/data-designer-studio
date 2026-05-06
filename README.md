@@ -10,7 +10,7 @@ Switch a single toggle, the only difference is where the LLM calls go.
 
 You pick a vertical (or build a schema from scratch), edit the columns and prompts, click Preview, and get back synthetic records with both deterministic samplers (UUID, age, category, etc.) and LLM-generated text columns (SOAP notes, fraud case summaries, equipment defect reports, etc.). Generation runs end-to-end on the ZGX Nano with no outbound traffic — that's the proof.
 
-The current build supports **dual-model routing**: a single dataset can split LLM columns across multiple models. Healthcare's preset uses this — the rich `history_of_present_illness` column hits Qwen3-32B-AWQ for clinical accuracy, the supporting `assessment_and_plan` column hits Qwen3-14B-AWQ for speed. Both run on the same Nano simultaneously. Buyers see one box, two models, one coherent record per row.
+The current build supports **dual-model routing**: a single dataset can split LLM columns across multiple models. Healthcare's preset uses this - the rich `history_of_present_illness` column hits Qwen3-32B-AWQ for clinical accuracy, the supporting `assessment_and_plan` column hits Qwen3-14B-AWQ for speed. Both run on the same Nano simultaneously. Buyers see one box, two models, one coherent record per row.
 
 ---
 
@@ -103,8 +103,8 @@ Set at minimum:
 
 ```
 NVIDIA_API_KEY=nvapi-yourkeyhere
-LOCAL_VLLM_URL=http://192.168.10.131:8090/v1       # use your Nano's actual IP
-LOCAL_VLLM_URL_FAST=http://192.168.10.131:8091/v1  # used by dual-routing presets
+LOCAL_VLLM_URL=http://192.168.xx.xxx:8090/v1       # use your Nano's actual IP
+LOCAL_VLLM_URL_FAST=http://192.168.xx.xxx:8091/v1  # used by dual-routing presets
 ```
 
 **Important:** use the Nano's explicit IP, not `host.docker.internal` — that hostname does not resolve from inside containers on Linux Docker. (See Gotchas below.)
