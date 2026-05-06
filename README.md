@@ -446,7 +446,7 @@ The Studio container can't resolve or reach the URL the host can. Check:
 
 ```bash
 docker compose exec ddstudio env | grep LOCAL_VLLM
-docker compose exec ddstudio curl -v http://192.168.10.131:8090/v1/models
+docker compose exec ddstudio curl -v http://192.168.xx.xxx:8090/v1/models
 ```
 
 If env shows `host.docker.internal` and curl says "Could not resolve host" — switch to the explicit IP in `.env`, then `docker compose down && docker compose up -d`.
