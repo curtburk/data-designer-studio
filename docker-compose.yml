@@ -1,0 +1,34 @@
+# Data Designer Studio - single-service compose
+# Target: ZGX Nano (ARM64) by default; works on x86_64 workstations too.
+# The local vLLM endpoint is expected to be already running (separate compose).
+
+version: "3.9"
+
+services:
+  ddstudio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/arm64  # per Curtis's container discipline for ZGX Nano
+    image: ddstudio:0.1.0
+    container_name: ddstudio
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      # Override artifact/db paths to container-side volume mount
+      ARTIFACT_PATH: /var/lib/ddstudio/artifacts
+      DB_PATH: /var/lib/ddstudio/ddstudio.db
+    ports:
+      - "8765:8765"
+    volumes:
+      - ddstudio_data:/var/lib/ddstudio
+      # Mount presets read-only so edits on host reflect without rebuild
+      - ./presets:/app/presets:ro
+    extra_hosts:
+      # Lets the container reach the host's local vLLM endpoint even when
+      # LOCAL_VLLM_URL is something like http://host-zgx.local:8090/v1
+      - "host-zgx.local:host-gateway"
+
+volumes:
+  ddstudio_data:

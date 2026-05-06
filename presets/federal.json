@@ -1,0 +1,104 @@
+{
+  "display_name": "Federal & Defense",
+  "tagline": "Mission logs, incident reports, clearance-aware records",
+  "icon": "\ud83d\udee1\ufe0f",
+  "demo_narrative": "Data never touches a commercial cloud. Every token generated stayed on this box. If your ATO blocks outbound egress, this still works.",
+  "schema": {
+    "name": "synthetic_mission_reports",
+    "description": "Synthetic mission activity records for defense-oriented demos. All fields fabricated.",
+    "vertical": "federal",
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "report_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "classification",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "UNCLASSIFIED",
+            "CUI",
+            "SECRET//NOFORN",
+            "TOP SECRET//SI"
+          ],
+          "weights": [
+            0.35,
+            0.4,
+            0.2,
+            0.05
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "operational_area",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "CENTCOM",
+            "EUCOM",
+            "INDOPACOM",
+            "AFRICOM",
+            "SOUTHCOM",
+            "NORTHCOM"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "report_date",
+        "sampler_type": "datetime",
+        "params": {
+          "start": "2024-01-01",
+          "end": "2026-04-01"
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "incident_type",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "ISR observation",
+            "equipment malfunction",
+            "personnel movement",
+            "communications anomaly",
+            "cyber indicator",
+            "logistics disruption",
+            "routine patrol"
+          ]
+        }
+      },
+      {
+        "kind": "llm_text",
+        "name": "executive_summary",
+        "model_alias": "primary",
+        "system_prompt": "You are a military staff writer. Use formal DOD report style. One paragraph, no classification markings in the text body itself.",
+        "prompt": "Write an executive summary paragraph for a {{ classification }} report from {{ operational_area }} dated {{ report_date }} describing a {{ incident_type }}. Include who, what, when, where, and operational significance. Do not fabricate real unit designators or personnel names.",
+        "max_tokens": 250
+      },
+      {
+        "kind": "llm_text",
+        "name": "recommended_action",
+        "model_alias": "primary",
+        "system_prompt": "Staff writer. Use imperative voice. 2-4 sentences.",
+        "prompt": "Given this situation: {{ executive_summary }}\n\nWrite a recommended action section. Include immediate actions, reporting requirements, and escalation thresholds.",
+        "max_tokens": 200
+      }
+    ],
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "primary",
+        "temperature": 0.5,
+        "top_p": 0.9,
+        "max_tokens": 400
+      }
+    ]
+  }
+}

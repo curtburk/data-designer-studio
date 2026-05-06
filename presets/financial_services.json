@@ -1,0 +1,104 @@
+{
+  "display_name": "Financial Services",
+  "tagline": "Transactions, fraud indicators, customer communications",
+  "icon": "\ud83d\udcb3",
+  "demo_narrative": "GLBA, PCI, SOX, state privacy laws \u2014 any one of those can kill a cloud deal. On-prem synthetic data lets you train fraud models without handing your customers' transaction patterns to a third party.",
+  "schema": {
+    "name": "synthetic_transactions_with_fraud_flags",
+    "description": "Synthetic transaction records with fraud indicators for fincrime demos.",
+    "vertical": "financial_services",
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "txn_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "amount_usd",
+        "sampler_type": "gaussian",
+        "params": {
+          "mean": 87.0,
+          "stddev": 150.0
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "merchant_category",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "grocery",
+            "restaurant",
+            "fuel",
+            "online_retail",
+            "atm_withdrawal",
+            "electronics",
+            "travel",
+            "money_transfer",
+            "gambling"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "channel",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "chip",
+            "magstripe",
+            "contactless",
+            "ecommerce_cnp",
+            "atm",
+            "wire"
+          ],
+          "weights": [
+            0.35,
+            0.05,
+            0.2,
+            0.3,
+            0.08,
+            0.02
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "fraud_flag",
+        "sampler_type": "bernoulli",
+        "params": {
+          "p": 0.08
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "txn_timestamp",
+        "sampler_type": "datetime",
+        "params": {
+          "start": "2026-03-01",
+          "end": "2026-04-22"
+        }
+      },
+      {
+        "kind": "llm_text",
+        "name": "case_summary",
+        "model_alias": "primary",
+        "system_prompt": "You are a fraud analyst writing brief case summaries. Be factual and clinical. For non-fraud transactions, write 'Normal activity \u2014 no indicators' and stop.",
+        "prompt": "Transaction: ${{ amount_usd }} at {{ merchant_category }} via {{ channel }} on {{ txn_timestamp }}. Fraud flag: {{ fraud_flag }}. Write a 2-3 sentence case summary describing why this was or wasn't flagged.",
+        "max_tokens": 250
+      }
+    ],
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "primary",
+        "temperature": 0.55,
+        "top_p": 0.9,
+        "max_tokens": 400
+      }
+    ]
+  }
+}

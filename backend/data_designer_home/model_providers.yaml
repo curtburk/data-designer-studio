@@ -1,0 +1,10 @@
+# Data Designer providers config, baked into the image at build time.
+providers:
+  - name: nvidia-hosted
+    endpoint: https://integrate.api.nvidia.com/v1
+    provider_type: openai
+    api_key: ${NVIDIA_API_KEY}
+  - name: zgx-local
+    endpoint: http://host.docker.internal:8090/v1
+    provider_type: openai
+    api_key: not-needed

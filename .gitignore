@@ -1,0 +1,156 @@
+# =============================================================================
+# Data Designer Studio - .gitignore
+#
+# Goal: keep secrets, runtime backups, and generated artifacts out of git.
+# Keep the .env.example template in - that's how new clones get configured.
+# =============================================================================
+
+
+# --- Secrets and runtime config -----------------------------------------------
+# backend/.env contains NVIDIA_API_KEY. NEVER commit it.
+# .env.example IS committed (template for new clones to copy from).
+backend/.env
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+!backend/.env.example
+
+
+# --- Backups created by patch scripts -----------------------------------------
+# apply-v012.sh writes here before modifying source files. Useful locally
+# for rollback, but they're snapshots of working tree - no need in git.
+.v011-backup/
+*.bak
+*.bak-multimodel
+*.orig
+
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual envs (just in case someone creates one in the project root)
+.venv/
+venv/
+env/
+ENV/
+.env-py/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+develop-eggs/
+wheels/
+share/python-wheels/
+
+# Test / coverage / type checking caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+
+# --- Node (defensive - no node deps today, but if anyone adds React build) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+
+# --- Generated runtime data ---------------------------------------------------
+# These live INSIDE the Studio container's named volume (/var/lib/ddstudio).
+# They never appear at the repo path on the host. Listed defensively in case
+# someone changes the volume mount to a host bind.
+artifacts/
+*.parquet
+*.sqlite
+*.sqlite3
+*.db
+ddstudio.db
+
+
+# --- Tarballs / release artifacts ---------------------------------------------
+# When you `tar czf data-designer-studio.tar.gz .` for distribution, the
+# tarball ends up in the repo root. Don't commit it back in.
+*.tar.gz
+*.tar
+*.zip
+*.7z
+
+
+# --- Editor / IDE -------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+
+# --- OS junk ------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+
+# --- Logs ---------------------------------------------------------------------
+*.log
+logs/
+log/
+
+
+# --- Jupyter / notebooks (defensive) ------------------------------------------
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+
+# --- HuggingFace / model caches (defensive) -----------------------------------
+# These live at ~/.cache/huggingface, NOT inside the repo. Listed in case
+# someone ever symlinks or accidentally creates a cache here.
+.cache/
+hf_cache/
+models/
+
+
+# --- Docker -------------------------------------------------------------------
+# Docker compose creates these for local override; not for git.
+docker-compose.override.yml
+.docker/
+
+
+# --- Notes / scratch ----------------------------------------------------------
+# tasks/todo.md and tasks/lessons.md are intentionally NOT ignored - they're
+# institutional knowledge worth versioning. Uncomment below if you'd rather
+# keep them local-only:
+# tasks/todo.md
+# tasks/lessons.md
+scratch/
+notes/
+TODO.local
+
+
+# --- Apply-once patch scripts -------------------------------------------------
+# Keeping apply-v012.sh in repo as documentation of how v0.1.1 → v0.1.2
+# happened. If you'd rather not, uncomment:
+# apply-v0*.sh

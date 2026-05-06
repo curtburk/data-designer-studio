@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Designer Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Söhne:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            'hp-charcoal': '#1c1c1e',
+            'hp-graphite': '#2a2a2d',
+            'hp-line': '#3a3a3d',
+            'hp-mute': '#8b8b90',
+            'hp-accent': '#76b900', /* nvidia green */
+            'hp-accent-dim': '#4d7a00',
+            'hp-warn': '#d4a017',
+            'hp-danger': '#d45050',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'IBM Plex Sans', sans-serif; background: #141416; color: #e6e6e8; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    input, select, textarea, button { font-family: inherit; }
+    /* Scrollbar tuning for dense tables */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #1c1c1e; }
+    ::-webkit-scrollbar-thumb { background: #3a3a3d; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a4a4d; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+    }
+  }
+  </script>
+  <script type="module" src="./app.js?v=2"></script>
+</body>
+</html>

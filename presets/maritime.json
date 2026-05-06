@@ -1,0 +1,118 @@
+{
+  "display_name": "Maritime",
+  "tagline": "Vessel tracking, cargo manifests, surveillance events",
+  "icon": "\u2693",
+  "demo_narrative": "AIS data, cargo records, surveillance feeds \u2014 all sensitive, all liable to reveal patterns adversaries want. On-prem generation means your training pipeline doesn't leak its own reconnaissance.",
+  "schema": {
+    "name": "synthetic_vessel_events",
+    "description": "Synthetic maritime surveillance events. All vessels, callsigns, cargo fabricated.",
+    "vertical": "maritime",
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "event_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "vessel_type",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "container",
+            "bulk_carrier",
+            "tanker",
+            "fishing",
+            "ro_ro",
+            "offshore_supply",
+            "unknown"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "flag_state",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "Panama",
+            "Liberia",
+            "Marshall Islands",
+            "Singapore",
+            "Malta",
+            "Bahamas",
+            "Unknown"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "event_region",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "South China Sea",
+            "Strait of Hormuz",
+            "Gulf of Aden",
+            "Baltic Sea",
+            "Mediterranean",
+            "North Atlantic"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "event_class",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "ais_gap",
+            "unexpected_course_change",
+            "loitering",
+            "dark_rendezvous",
+            "port_call",
+            "identity_swap_suspected",
+            "routine_transit"
+          ],
+          "weights": [
+            0.12,
+            0.1,
+            0.08,
+            0.04,
+            0.25,
+            0.03,
+            0.38
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "event_timestamp",
+        "sampler_type": "datetime",
+        "params": {
+          "start": "2026-01-01",
+          "end": "2026-04-22"
+        }
+      },
+      {
+        "kind": "llm_text",
+        "name": "analyst_note",
+        "model_alias": "primary",
+        "system_prompt": "You are a maritime intelligence analyst writing concise, factual event notes. Avoid speculation beyond what the event type supports.",
+        "prompt": "Write a 3-sentence analyst note for a {{ event_class }} event involving a {{ vessel_type }} flagged {{ flag_state }} in the {{ event_region }} at {{ event_timestamp }}. Note what was observed, why it is notable (if at all), and what follow-up collection (if any) is warranted.",
+        "max_tokens": 300
+      }
+    ],
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "primary",
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "max_tokens": 400
+      }
+    ]
+  }
+}

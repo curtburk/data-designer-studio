@@ -1,0 +1,105 @@
+{
+  "display_name": "State, Local & Education",
+  "tagline": "Student records, case files, permit applications",
+  "icon": "\ud83c\udfdb\ufe0f",
+  "demo_narrative": "FERPA, CJIS, COPPA \u2014 pick your acronym. When the data stays on the district's own hardware, the compliance conversation gets a lot shorter.",
+  "schema": {
+    "name": "synthetic_student_support_cases",
+    "description": "Fabricated student support records for SLED-segment demos. Contains no real PII.",
+    "vertical": "sled",
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "case_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "grade_level",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "K-2",
+            "3-5",
+            "6-8",
+            "9-12"
+          ],
+          "weights": [
+            0.2,
+            0.25,
+            0.25,
+            0.3
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "case_category",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "academic intervention",
+            "attendance concern",
+            "behavioral referral",
+            "IEP update",
+            "504 accommodation request",
+            "counselor check-in",
+            "transportation issue"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "priority",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "routine",
+            "elevated",
+            "urgent"
+          ],
+          "weights": [
+            0.65,
+            0.25,
+            0.1
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "opened_date",
+        "sampler_type": "datetime",
+        "params": {
+          "start": "2024-08-01",
+          "end": "2026-04-01"
+        }
+      },
+      {
+        "kind": "llm_text",
+        "name": "case_narrative",
+        "model_alias": "primary",
+        "system_prompt": "You are a student support specialist writing case notes. Use neutral, strengths-based language. Do not invent real names; use role descriptors like 'the student', 'the teacher'.",
+        "prompt": "Write a 3-4 sentence case narrative for a {{ priority }}-priority {{ case_category }} involving a {{ grade_level }} student, opened on {{ opened_date }}. Include the presenting concern, relevant context, and initial response.",
+        "max_tokens": 250
+      },
+      {
+        "kind": "llm_text",
+        "name": "next_steps",
+        "model_alias": "primary",
+        "prompt": "Based on this case narrative: {{ case_narrative }}\n\nList 3 concrete next steps as a numbered list.",
+        "max_tokens": 300
+      }
+    ],
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "primary",
+        "temperature": 0.6,
+        "top_p": 0.9,
+        "max_tokens": 400
+      }
+    ]
+  }
+}

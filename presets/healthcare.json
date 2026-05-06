@@ -1,0 +1,128 @@
+{
+  "display_name": "Healthcare",
+  "tagline": "Patient records, SOAP notes, triage scenarios",
+  "icon": "\ud83c\udfe5",
+  "demo_narrative": "Where does this patient data go? Right here on this device. Nowhere else. No BAA required, no cloud compliance review, no PHI ever leaves the room.",
+  "schema": {
+    "name": "synthetic_patient_records",
+    "description": "Synthetic patient encounters. Contains no real PHI.",
+    "vertical": "healthcare",
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-32B-AWQ",
+        "alias": "rich",
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "max_tokens": 600
+      },
+      {
+        "mode": "local_fast",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "fast",
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "max_tokens": 400
+      }
+    ],
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "patient_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "age",
+        "sampler_type": "uniform",
+        "params": {
+          "low": 18,
+          "high": 92
+        },
+        "convert_to": "int"
+      },
+      {
+        "kind": "sampler",
+        "name": "sex",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "F",
+            "M"
+          ],
+          "weights": [
+            0.52,
+            0.48
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "encounter_type",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "emergency",
+            "urgent_care",
+            "primary_care",
+            "telehealth",
+            "specialist_referral"
+          ],
+          "weights": [
+            0.18,
+            0.22,
+            0.35,
+            0.15,
+            0.1
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "chief_complaint_category",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "chest pain",
+            "shortness of breath",
+            "abdominal pain",
+            "headache",
+            "back pain",
+            "fever",
+            "cough",
+            "dizziness",
+            "fatigue",
+            "medication refill"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "acuity_score",
+        "sampler_type": "uniform",
+        "params": {
+          "low": 1,
+          "high": 5
+        },
+        "convert_to": "int"
+      },
+      {
+        "kind": "llm_text",
+        "name": "history_of_present_illness",
+        "model_alias": "rich",
+        "max_tokens": 400,
+        "system_prompt": "You are a clinical documentation assistant writing structured HPI sections. Use precise clinical language. No real names. Output only the HPI paragraph - no headers, no preamble.",
+        "prompt": "Write a 3-4 sentence HPI for a {{ age }}-year-old {{ sex }} presenting to {{ encounter_type }} with chief complaint {{ chief_complaint_category }}. Acuity {{ acuity_score }}/5. Include onset, quality, severity, associated symptoms, and pertinent negatives."
+      },
+      {
+        "kind": "llm_text",
+        "name": "assessment_and_plan",
+        "model_alias": "fast",
+        "max_tokens": 300,
+        "system_prompt": "Clinical documentation assistant. Output A: 2 bullets, P: 3 bullets. Concise.",
+        "prompt": "Given this HPI: {{ history_of_present_illness }}\n\nWrite an Assessment and Plan. Use this format exactly:\nA:\n- bullet 1\n- bullet 2\nP:\n- bullet 1\n- bullet 2\n- bullet 3"
+      }
+    ]
+  }
+}

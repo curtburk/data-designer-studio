@@ -1,0 +1,117 @@
+{
+  "display_name": "Manufacturing",
+  "tagline": "Inspection reports, defect classifications, work orders",
+  "icon": "\ud83c\udfed",
+  "demo_narrative": "Your process data is your IP. Keep it on the factory floor \u2014 not in someone else's datacenter being used to train their next model.",
+  "schema": {
+    "name": "synthetic_qa_inspections",
+    "description": "Synthetic QA inspection records for manufacturing-segment demos.",
+    "vertical": "manufacturing",
+    "columns": [
+      {
+        "kind": "sampler",
+        "name": "inspection_id",
+        "sampler_type": "uuid",
+        "params": {}
+      },
+      {
+        "kind": "sampler",
+        "name": "line_id",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "LINE-A1",
+            "LINE-A2",
+            "LINE-B1",
+            "LINE-B2",
+            "LINE-C1"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "part_family",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "housing",
+            "bracket",
+            "bearing",
+            "valve",
+            "seal",
+            "gasket",
+            "fastener"
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "defect_class",
+        "sampler_type": "category",
+        "params": {
+          "values": [
+            "no_defect",
+            "cosmetic_scratch",
+            "dimensional_out_of_tol",
+            "surface_porosity",
+            "crack_visible",
+            "assembly_error",
+            "material_contamination"
+          ],
+          "weights": [
+            0.7,
+            0.08,
+            0.07,
+            0.05,
+            0.03,
+            0.04,
+            0.03
+          ]
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "measurement_mm",
+        "sampler_type": "gaussian",
+        "params": {
+          "mean": 25.0,
+          "stddev": 0.3
+        }
+      },
+      {
+        "kind": "sampler",
+        "name": "inspected_at",
+        "sampler_type": "datetime",
+        "params": {
+          "start": "2026-01-01",
+          "end": "2026-04-22"
+        }
+      },
+      {
+        "kind": "llm_text",
+        "name": "inspector_notes",
+        "model_alias": "primary",
+        "system_prompt": "You are a QA inspector writing terse field notes. Use short, factual phrases. Reference measurements and visual findings.",
+        "prompt": "Write 2-3 sentences of inspector notes for part_family={{ part_family }} on {{ line_id }}. Defect class: {{ defect_class }}. Measured dimension: {{ measurement_mm }} mm (nominal 25.0 mm). Inspected at {{ inspected_at }}.",
+        "max_tokens": 300
+      },
+      {
+        "kind": "llm_text",
+        "name": "disposition",
+        "model_alias": "primary",
+        "prompt": "Based on: {{ inspector_notes }}\n\nProvide a one-line disposition: ACCEPT, REWORK, or SCRAP, with a brief rationale.",
+        "max_tokens": 80
+      }
+    ],
+    "models": [
+      {
+        "mode": "local",
+        "model_id": "Qwen/Qwen3-14B-AWQ",
+        "alias": "primary",
+        "temperature": 0.5,
+        "top_p": 0.9,
+        "max_tokens": 400
+      }
+    ]
+  }
+}
