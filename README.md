@@ -350,8 +350,8 @@ All in `backend/.env` unless noted. Bold = required.
 | Variable | Default | Purpose |
 |---|---|---|
 | **`NVIDIA_API_KEY`** | (none) | Hosted-mode API key. Get from build.nvidia.com. |
-| `LOCAL_VLLM_URL` | `http://192.168.10.131:8090/v1` | Primary vLLM endpoint. **Use explicit IP, not `host.docker.internal`.** |
-| `LOCAL_VLLM_URL_FAST` | `http://192.168.10.131:8091/v1` | Secondary vLLM endpoint for dual-routing. |
+| `LOCAL_VLLM_URL` | `http://192.168.xx.xxx:8090/v1` | Primary vLLM endpoint. **Use explicit IP, not `host.docker.internal`.** |
+| `LOCAL_VLLM_URL_FAST` | `http://192.168..xx.xxx:8091/v1` | Secondary vLLM endpoint for dual-routing. |
 | `LOCAL_VLLM_API_KEY` | `not-needed` | vLLM doesn't authenticate by default. |
 | `BACKEND_PORT` | `8765` | Studio HTTP port. |
 | `ARTIFACT_PATH` | `/var/lib/ddstudio/artifacts` | Where generated datasets land. |
