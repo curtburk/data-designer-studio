@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     # Providers
     nvidia_api_key: str = ""
     nvidia_endpoint: str = "https://integrate.api.nvidia.com/v1"
-    local_vllm_url: str = "http://192.168.10.123:8090/v1"
-    local_vllm_url_fast: str = "http://192.168.10.123:8091/v1"
+    local_vllm_url: str = "http://<NANO_IP>:8090/v1"
+    local_vllm_url_fast: str = "http://<NANO_IP>:8091/v1"
     local_vllm_api_key: str = "not-needed"
 
     # Backend binding
