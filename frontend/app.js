@@ -334,7 +334,7 @@ function ModelSelector({ schema, onChange, models }) {
   const others = schema.models.slice(1);
 
   // Resolve mode -> available model ids for the dropdown
-  const modeForModel = (m) => m?.mode === "local_fast" ? "local" : (m?.mode || "hosted");
+  const modeForModel = (m) => m?.mode || "hosted";
   const modelOptions = (models?.[modeForModel(primary)] || []).map(m => ({
     value: m.id,
     label: `${m.label}${m.tags?.length ? " — " + m.tags.join(", ") : ""}`,
@@ -448,8 +448,7 @@ function ModelSelector({ schema, onChange, models }) {
           ].map(o => h("button", {
             key: o.v,
             onClick: () => {
-              const targetMode = o.v === "local_fast" ? "local" : o.v;
-              const firstModel = models?.[targetMode]?.[0]?.id;
+              const firstModel = models?.[o.v]?.[0]?.id;
               updateOther(i, { mode: o.v, model_id: firstModel || m.model_id });
             },
             className: `px-2 py-1 rounded border text-[11px] transition-colors ${
@@ -785,7 +784,7 @@ function PreflightPage() {
 function App() {
   const [page, setPage] = useState("builder");
   const [health, setHealth] = useState(null);
-  const [models, setModels] = useState({ hosted: [], local: [] });
+  const [models, setModels] = useState({ hosted: [], local: [], local_fast: [] });
 
   useEffect(() => {
     const load = async () => {
