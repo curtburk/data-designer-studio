@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    platform: linux/arm64  # per Curtis's container discipline for ZGX Nano
+    platform: linux/arm64 
     image: ddstudio:0.1.0
     container_name: ddstudio
     restart: unless-stopped
