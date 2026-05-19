@@ -163,17 +163,23 @@ if [ "$SKIP_VLLM" = false ]; then
     fi
 fi
 
-# ── Start or reuse vLLM ─────────────────────────────────────────────────────
+# ── Start or reuse vLLMs (in parallel) ──────────────────────────────────────
+# Both vLLMs are launched concurrently. Total wall-clock time becomes
+# max(T_primary, T_fast) rather than T_primary + T_fast.
 
 if [ "$SKIP_VLLM" = true ]; then
     hdr "Skipping vLLM (--skip-vllm). Local mode will be unavailable."
 else
-    VLLM_RUNNING=false
+    # Track which containers we still need to wait on.
+    NEED_PRIMARY=true
+    NEED_FAST=false
+    [ "$VLLM_FAST_ENABLED" = "true" ] && NEED_FAST=true
 
+    # ── Primary vLLM container: check existing state, recreate if needed ────
     if docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
         if curl -sf "http://localhost:${VLLM_PORT}/v1/models" &>/dev/null; then
-            hdr "vLLM already healthy - reusing existing container"
-            VLLM_RUNNING=true
+            ok "Primary vLLM already healthy on port ${VLLM_PORT} - reusing"
+            NEED_PRIMARY=false
         else
             warn "$VLLM_CONTAINER_NAME exists but isn't responding. Recreating..."
             docker rm -f "$VLLM_CONTAINER_NAME" &>/dev/null
@@ -183,153 +189,153 @@ else
         docker rm -f "$VLLM_CONTAINER_NAME" &>/dev/null
     fi
 
-    if [ "$VLLM_RUNNING" = false ]; then
-        hdr "Starting vLLM ($VLLM_MODEL)"
+    # ── Fast vLLM container: same dance ────────────────────────────────────
+    if [ "$NEED_FAST" = true ]; then
+        if docker ps --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
+            if curl -sf "http://localhost:${VLLM_FAST_PORT}/v1/models" &>/dev/null; then
+                ok "Fast vLLM already healthy on port ${VLLM_FAST_PORT} - reusing"
+                NEED_FAST=false
+            else
+                warn "$VLLM_FAST_CONTAINER_NAME exists but not responding. Recreating..."
+                docker rm -f "$VLLM_FAST_CONTAINER_NAME" &>/dev/null
+            fi
+        elif docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
+            docker rm -f "$VLLM_FAST_CONTAINER_NAME" &>/dev/null
+        fi
+    fi
 
-        echo "  First-time model load: 5-10 min for download + CUDA compilation"
-        echo "  Subsequent starts: ~30 sec (model cached, graphs precompiled)"
-        echo "  Tip: leave this container running between Studio restarts"
+    # ── Launch whichever containers need launching, in parallel ────────────
+    if [ "$NEED_PRIMARY" = true ] || [ "$NEED_FAST" = true ]; then
+        hdr "Starting vLLMs in parallel"
+        echo "  Primary: ${VLLM_MODEL} (port ${VLLM_PORT}, gpu_mem ${VLLM_GPU_MEM})"
+        if [ "$NEED_FAST" = true ]; then
+            echo "  Fast:    ${VLLM_FAST_MODEL} (port ${VLLM_FAST_PORT}, gpu_mem ${VLLM_FAST_GPU_MEM})"
+        fi
+        echo "  First-time load: 5-10 min. Subsequent: ~90 sec (cache hit on compile/graphs)."
         echo ""
 
-        # Build the vllm serve args from our config
-        VLLM_ARGS=(--model "$VLLM_MODEL")
-        if [ -n "$VLLM_QUANT" ]; then
-            VLLM_ARGS+=(--quantization "$VLLM_QUANT")
-        fi
-        VLLM_ARGS+=(--port 8000)
-        VLLM_ARGS+=(--gpu-memory-utilization "$VLLM_GPU_MEM")
-        # Reasoning parser strips Qwen3 <think> blocks from response.content.
-        # Chat template kwargs disables thinking generation entirely - the right
-        # behavior for synthetic data where we want the answer, not the reasoning.
-        # Passed as separate array elements so no shell-quoting fight with the JSON.
-        VLLM_ARGS+=(--reasoning-parser qwen3)
-        VLLM_ARGS+=(--default-chat-template-kwargs '{"enable_thinking": false}')
-        # Append any user-provided extras (split on whitespace, no quoting magic)
-        if [ -n "$VLLM_EXTRA_ARGS" ]; then
-            # shellcheck disable=SC2206
-            VLLM_ARGS+=($VLLM_EXTRA_ARGS)
+        # Build primary args
+        if [ "$NEED_PRIMARY" = true ]; then
+            VLLM_ARGS=(--model "$VLLM_MODEL")
+            [ -n "$VLLM_QUANT" ] && VLLM_ARGS+=(--quantization "$VLLM_QUANT")
+            VLLM_ARGS+=(--port 8000)
+            VLLM_ARGS+=(--gpu-memory-utilization "$VLLM_GPU_MEM")
+            VLLM_ARGS+=(--reasoning-parser qwen3)
+            VLLM_ARGS+=(--default-chat-template-kwargs '{"enable_thinking": false}')
+            if [ -n "$VLLM_EXTRA_ARGS" ]; then
+                # shellcheck disable=SC2206
+                VLLM_ARGS+=($VLLM_EXTRA_ARGS)
+            fi
+
+            DOCKER_ARGS=(
+                -d --gpus all
+                --name "$VLLM_CONTAINER_NAME"
+                --restart unless-stopped
+                -v "$HF_CACHE:/root/.cache/huggingface"
+                -v "$VLLM_CACHE:/root/.cache/vllm"
+                -p "${VLLM_PORT}:8000"
+                --ipc=host
+            )
+            [ -n "${HF_TOKEN:-}" ] && DOCKER_ARGS+=(-e "HF_TOKEN=$HF_TOKEN")
+
+            docker run "${DOCKER_ARGS[@]}" "$VLLM_IMAGE" "${VLLM_ARGS[@]}" > /dev/null
+            info "Primary vLLM container launched: $VLLM_CONTAINER_NAME"
         fi
 
-        DOCKER_ARGS=(
-            -d
-            --gpus all
-            --name "$VLLM_CONTAINER_NAME"
-            --restart unless-stopped
-            -v "$HF_CACHE:/root/.cache/huggingface"
-            -v "$VLLM_CACHE:/root/.cache/vllm"
-            -p "${VLLM_PORT}:8000"
-            --ipc=host
-        )
-        if [ -n "${HF_TOKEN:-}" ]; then
-            DOCKER_ARGS+=(-e "HF_TOKEN=$HF_TOKEN")
+        # Build fast args
+        if [ "$NEED_FAST" = true ]; then
+            FAST_DOCKER_ARGS=(
+                -d --gpus all
+                --name "$VLLM_FAST_CONTAINER_NAME"
+                --restart unless-stopped
+                -v "$HF_CACHE:/root/.cache/huggingface"
+                -v "$VLLM_CACHE:/root/.cache/vllm"
+                -p "${VLLM_FAST_PORT}:8000"
+                --ipc=host
+            )
+            [ -n "${HF_TOKEN:-}" ] && FAST_DOCKER_ARGS+=(-e "HF_TOKEN=$HF_TOKEN")
+
+            FAST_VLLM_ARGS=(
+                --model "$VLLM_FAST_MODEL"
+                --quantization awq_marlin
+                --port 8000
+                --gpu-memory-utilization "$VLLM_FAST_GPU_MEM"
+                --max-model-len 8192
+                --reasoning-parser qwen3
+                --default-chat-template-kwargs '{"enable_thinking": false}'
+            )
+
+            docker run "${FAST_DOCKER_ARGS[@]}" "$VLLM_IMAGE" "${FAST_VLLM_ARGS[@]}" > /dev/null
+            info "Fast vLLM container launched: $VLLM_FAST_CONTAINER_NAME"
         fi
 
-        docker run "${DOCKER_ARGS[@]}" "$VLLM_IMAGE" "${VLLM_ARGS[@]}" > /dev/null
-        info "Container started: $VLLM_CONTAINER_NAME"
+        # ── Poll both endpoints in one loop, exit when all needed are healthy ─
         echo ""
-
-        # Health-poll. vLLM doesn't expose /health, but /v1/models works once ready.
+        echo "  Waiting for vLLMs to become healthy..."
+        echo -n "  "
         ATTEMPTS=0
-        MAX_ATTEMPTS=180  # 15 min max; a 32B model on cold cache can be slow
-        echo -n "  Loading"
+        MAX_ATTEMPTS=180  # 15 min ceiling; cold first-load can take that on 32B
+        PRIMARY_OK=false
+        FAST_OK=false
+        [ "$NEED_PRIMARY" = false ] && PRIMARY_OK=true
+        [ "$NEED_FAST" = false ] && FAST_OK=true
+
         while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-            if curl -sf "http://localhost:${VLLM_PORT}/v1/models" &>/dev/null; then
-                echo ""
-                ok "vLLM is serving on port $VLLM_PORT"
+            # Probe primary if still waiting on it
+            if [ "$PRIMARY_OK" = false ]; then
+                if curl -sf "http://localhost:${VLLM_PORT}/v1/models" &>/dev/null; then
+                    PRIMARY_OK=true
+                    ELAPSED=$((ATTEMPTS * 5))
+                    echo ""
+                    ok "Primary vLLM healthy on port ${VLLM_PORT} (${ELAPSED}s)"
+                    [ "$FAST_OK" = false ] && echo -n "  "
+                fi
+            fi
+            # Probe fast if still waiting on it
+            if [ "$FAST_OK" = false ]; then
+                if curl -sf "http://localhost:${VLLM_FAST_PORT}/v1/models" &>/dev/null; then
+                    FAST_OK=true
+                    ELAPSED=$((ATTEMPTS * 5))
+                    echo ""
+                    ok "Fast vLLM healthy on port ${VLLM_FAST_PORT} (${ELAPSED}s)"
+                    [ "$PRIMARY_OK" = false ] && echo -n "  "
+                fi
+            fi
+            # Both healthy → exit loop
+            if [ "$PRIMARY_OK" = true ] && [ "$FAST_OK" = true ]; then
                 break
             fi
+
+            # Check for early container death
+            if [ "$NEED_PRIMARY" = true ] && [ "$PRIMARY_OK" = false ]; then
+                if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+                    echo ""
+                    fail "Primary vLLM exited unexpectedly. Logs: docker logs $VLLM_CONTAINER_NAME"
+                fi
+            fi
+            if [ "$NEED_FAST" = true ] && [ "$FAST_OK" = false ]; then
+                if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
+                    echo ""
+                    warn "Fast vLLM exited. Logs: docker logs $VLLM_FAST_CONTAINER_NAME"
+                    warn "Continuing without fast vLLM. Healthcare dual-routing will fail."
+                    FAST_OK=true  # mark "done" so we don't keep polling
+                fi
+            fi
+
             ATTEMPTS=$((ATTEMPTS + 1))
             ELAPSED=$((ATTEMPTS * 5))
-
             if [ $((ATTEMPTS % 6)) -eq 0 ]; then
                 echo -n " ${ELAPSED}s"
             else
                 echo -n "."
             fi
-
-            # Check if container died early
-            if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
-                echo ""
-                fail "vLLM container exited unexpectedly. Logs: docker logs $VLLM_CONTAINER_NAME"
-            fi
-
             sleep 5
         done
 
-        if [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; then
+        if [ "$PRIMARY_OK" = false ]; then
             echo ""
-            fail "vLLM did not become healthy in 15 minutes. Logs: docker logs $VLLM_CONTAINER_NAME"
+            fail "Primary vLLM did not become healthy in 15 minutes. Logs: docker logs $VLLM_CONTAINER_NAME"
         fi
-    fi
-fi
-
-# ── Start Studio (always rebuild on changes) ────────────────────────────────
-
-
-# ── Optionally start the 'fast' vLLM container ─────────────────────────────
-if [ "$SKIP_VLLM" = false ] && [ "$VLLM_FAST_ENABLED" = "true" ]; then
-    FAST_RUNNING=false
-    if docker ps --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
-        if curl -sf "http://localhost:${VLLM_FAST_PORT}/v1/models" &>/dev/null; then
-            hdr "Fast vLLM already healthy - reusing"
-            FAST_RUNNING=true
-        else
-            warn "${VLLM_FAST_CONTAINER_NAME} exists but not responding. Recreating..."
-            docker rm -f "$VLLM_FAST_CONTAINER_NAME" &>/dev/null
-        fi
-    elif docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
-        docker rm -f "$VLLM_FAST_CONTAINER_NAME" &>/dev/null
-    fi
-
-    if [ "$FAST_RUNNING" = false ]; then
-        hdr "Starting fast vLLM (${VLLM_FAST_MODEL})"
-        echo "  Memory utilization: ${VLLM_FAST_GPU_MEM} (bounded so 32B has room)"
-        echo ""
-
-        FAST_DOCKER_ARGS=(
-            -d --gpus all
-            --name "$VLLM_FAST_CONTAINER_NAME"
-            --restart unless-stopped
-            -v "$HF_CACHE:/root/.cache/huggingface"
-            -v "$VLLM_CACHE:/root/.cache/vllm"
-            -p "${VLLM_FAST_PORT}:8000"
-            --ipc=host
-        )
-        if [ -n "${HF_TOKEN:-}" ]; then
-            FAST_DOCKER_ARGS+=(-e "HF_TOKEN=$HF_TOKEN")
-        fi
-
-        FAST_VLLM_ARGS=(
-            --model "$VLLM_FAST_MODEL"
-            --quantization awq_marlin
-            --port 8000
-            --gpu-memory-utilization "$VLLM_FAST_GPU_MEM"
-            --max-model-len 8192
-            --reasoning-parser qwen3
-            --default-chat-template-kwargs '{"enable_thinking": false}'
-        )
-
-        docker run "${FAST_DOCKER_ARGS[@]}" "$VLLM_IMAGE" "${FAST_VLLM_ARGS[@]}" > /dev/null
-        info "fast vLLM container started"
-
-        echo -n "  Loading"
-        ATTEMPTS=0
-        while [ $ATTEMPTS -lt 60 ]; do
-            if curl -sf "http://localhost:${VLLM_FAST_PORT}/v1/models" &>/dev/null; then
-                echo ""
-                ok "fast vLLM serving on port $VLLM_FAST_PORT"
-                break
-            fi
-            ATTEMPTS=$((ATTEMPTS + 1))
-            echo -n "."
-            if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_FAST_CONTAINER_NAME}$"; then
-                echo ""
-                warn "fast vLLM exited. Logs: docker logs $VLLM_FAST_CONTAINER_NAME"
-                warn "Continuing without fast vLLM. Healthcare preset will fall back to 32B."
-                break
-            fi
-            sleep 5
-        done
     fi
 fi
 
