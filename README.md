@@ -84,12 +84,28 @@ nvidia-smi
 docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
+**Note for DGX OS Nanos:** If `apt install docker.io` fails with a containerd conflict, DGX OS ships with NVIDIA's pinned containerd that conflicts with the standard Docker package. On a Nano with no other GPU workloads running, the fix is to purge and reinstall:
+
+```bash
+sudo apt remove -y docker docker-engine docker.io containerd runc
+sudo apt autoremove -y
+sudo apt install -y docker.io docker-compose-plugin
+```
+
+If the Nano is already running other NVIDIA demos, check with whoever maintains that machine before purging — the pinned containerd may be required by other workloads.
+
 ### 2. Get the source
 
 ```bash
 cd ~/Desktop
-tar xzf data-designer-studio.tar.gz
+git clone https://github.com/curtburk/data-designer-studio.git
 cd data-designer-studio
+```
+
+If the repo is private, ask Curtis to add you as a collaborator on GitHub, or clone using a personal access token:
+
+```bash
+git clone https://<your-username>:<your-PAT>@github.com/curtburk/data-designer-studio.git
 ```
 
 ### 3. Configure environment
@@ -351,7 +367,7 @@ All in `backend/.env` unless noted. Bold = required.
 |---|---|---|
 | **`NVIDIA_API_KEY`** | (none) | Hosted-mode API key. Get from build.nvidia.com. |
 | `LOCAL_VLLM_URL` | `http://192.168.xx.xxx:8090/v1` | Primary vLLM endpoint. **Use explicit IP, not `host.docker.internal`.** |
-| `LOCAL_VLLM_URL_FAST` | `http://192.168..xx.xxx:8091/v1` | Secondary vLLM endpoint for dual-routing. |
+| `LOCAL_VLLM_URL_FAST` | `http://192.168.xx.xxx:8091/v1` | Secondary vLLM endpoint for dual-routing. |
 | `LOCAL_VLLM_API_KEY` | `not-needed` | vLLM doesn't authenticate by default. |
 | `BACKEND_PORT` | `8765` | Studio HTTP port. |
 | `ARTIFACT_PATH` | `/var/lib/ddstudio/artifacts` | Where generated datasets land. |
