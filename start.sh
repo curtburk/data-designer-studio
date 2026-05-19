@@ -44,6 +44,7 @@ VLLM_FAST_MODEL="${VLLM_FAST_MODEL:-Qwen/Qwen3-14B-AWQ}"
 VLLM_FAST_PORT="${VLLM_FAST_PORT:-8091}"
 VLLM_FAST_GPU_MEM="${VLLM_FAST_GPU_MEM:-0.35}"
 HF_CACHE="${HF_CACHE:-$HOME/.cache/huggingface}"
+VLLM_CACHE="${VLLM_CACHE:-$HOME/.cache/vllm}"
 APP_PORT="${APP_PORT:-8765}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -137,14 +138,13 @@ fi
 
 # Make sure LOCAL_VLLM_URL points where we'll be serving (only if running vLLM)
 if [ "$SKIP_VLLM" = false ]; then
-    EXPECTED_URL="http://host.docker.internal:${VLLM_PORT}/v1"
-    if ! grep -qE "^LOCAL_VLLM_URL=${EXPECTED_URL}$" "$SCRIPT_DIR/backend/.env"; then
-        warn "LOCAL_VLLM_URL in backend/.env doesn't match the port we're serving on (${VLLM_PORT})."
-        warn "  Expected: LOCAL_VLLM_URL=${EXPECTED_URL}"
-        warn "  Current:  $(grep '^LOCAL_VLLM_URL=' "$SCRIPT_DIR/backend/.env" || echo '<unset>')"
-        warn "  Fix this in backend/.env or local mode won't connect."
+    # Just verify the port matches - the URL hostname/IP varies per deployment
+    if grep -qE "^LOCAL_VLLM_URL=.*:${VLLM_PORT}/v1" "$SCRIPT_DIR/backend/.env"; then
+        ok "LOCAL_VLLM_URL points to vLLM port ${VLLM_PORT}"
     else
-        ok "LOCAL_VLLM_URL matches vLLM port"
+        warn "LOCAL_VLLM_URL in backend/.env doesn't appear to use port ${VLLM_PORT}."
+        warn "  Current: $(grep '^LOCAL_VLLM_URL=' "$SCRIPT_DIR/backend/.env" || echo '<unset>')"
+        warn "  Expected port: ${VLLM_PORT}"
     fi
 fi
 
@@ -216,6 +216,7 @@ else
             --name "$VLLM_CONTAINER_NAME"
             --restart unless-stopped
             -v "$HF_CACHE:/root/.cache/huggingface"
+            -v "$VLLM_CACHE:/root/.cache/vllm"
             -p "${VLLM_PORT}:8000"
             --ipc=host
         )
@@ -290,6 +291,7 @@ if [ "$SKIP_VLLM" = false ] && [ "$VLLM_FAST_ENABLED" = "true" ]; then
             --name "$VLLM_FAST_CONTAINER_NAME"
             --restart unless-stopped
             -v "$HF_CACHE:/root/.cache/huggingface"
+            -v "$VLLM_CACHE:/root/.cache/vllm"
             -p "${VLLM_FAST_PORT}:8000"
             --ipc=host
         )
